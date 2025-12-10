@@ -7,13 +7,13 @@ import re
 import io
 import zipfile
 
-# --- НАСТРОЙКИ ---
+# --- SETTINGS ---
 API_KEY = st.secrets["GOOGLE_API_KEY"]
 
-# --- КОНФИГУРАЦИЯ ---
+# --- CONFIGURATION ---
 st.set_page_config(page_title="Invoice Expert", page_icon="📄", layout="wide")
 
-# Речник за транслитерация
+# Transliteration Dictionary 
 TRANSLIT_MAP = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ж': 'zh',
     'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n',
@@ -74,17 +74,17 @@ def process_single_file(bytes_data):
             return process_single_file(bytes_data)
         raise e
 
-# --- UI (ИНТЕРФЕЙС) ---
+# --- UI (Interface) ---
 st.title("🤖 AI Екстрактор + Преименуване")
 st.markdown("Качи PDF файловете, избери начален номер и аз ще ти върна Excel таблица + преименувани файлове.")
 
-# 1. Инициализиране на 'паметта' (Session State)
+# 1. (Session State)
 if 'processed_data' not in st.session_state:
     st.session_state.processed_data = None
 if 'zip_archive' not in st.session_state:
     st.session_state.zip_archive = None
 
-# Секция за настройки
+# Settings section
 col1, col2 = st.columns(2)
 with col1:
     uploaded_files = st.file_uploader("1. Избери PDF файлове", type="pdf", accept_multiple_files=True)
@@ -92,7 +92,7 @@ with col2:
     start_number = st.number_input("2. Начален номер за файловете", min_value=1, value=1023, step=1)
 
 if uploaded_files:
-    # Проверка дали сме натиснали бутона
+    # Check if the button is clicked
     if st.button("🚀 ЗАПОЧНИ ОБРАБОТКА", type="primary"):
         if not API_KEY or "СЛОЖИ_ТВОЯ" in API_KEY:
             st.error("Липсва API Key в кода!")
@@ -149,29 +149,27 @@ if uploaded_files:
 
         status_text.success("Готово! Данните са извлечени.")
         
-        # 2. ЗАПАЗВАНЕ В ПАМЕТТА (Session State)
-        # Това е важното! Тук казваме на Streamlit: "Запомни тези данни завинаги!"
+        # 2. Memory Saving (Session State)
         st.session_state.processed_data = pd.DataFrame(all_data)
         
-        # Генерираме ZIP веднага и го пазим като bytes
+        # Generation of the Zip file with the edited pdf names
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "w") as zf:
             for item in renamed_files_data:
                 zf.writestr(item["name"], item["data"])
         st.session_state.zip_archive = zip_buffer.getvalue()
 
-# --- 3. ПОКАЗВАНЕ НА РЕЗУЛТАТИТЕ ---
-# Този блок е ИЗВЪН бутона. Той се изпълнява винаги, когато имаме запазени данни.
+# --- 3. SHOWING THE RESULTS ---
 if st.session_state.processed_data is not None:
     st.divider()
     st.subheader("📊 Резултати")
     
-    # Показваме таблицата
+    # Tables
     st.dataframe(st.session_state.processed_data)
 
     col_dl_1, col_dl_2 = st.columns(2)
 
-    # Бутон за Excel
+    # Excel Button
     buffer_excel = io.BytesIO()
     with pd.ExcelWriter(buffer_excel, engine='openpyxl') as writer:
         st.session_state.processed_data.to_excel(writer, index=False, sheet_name='Sheet1')
@@ -184,7 +182,7 @@ if st.session_state.processed_data is not None:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-    # Бутон за ZIP
+    # ZIP button
     with col_dl_2:
         if st.session_state.zip_archive:
             st.download_button(
